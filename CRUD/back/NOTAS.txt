@@ -1,0 +1,11 @@
+mi_proyecto/
+├── app/
+│   ├── __init__.py
+│   ├── main.py          # Punto de entrada (FastAPI, Flask, etc.)
+│   ├── database.py      # Configuración del Engine y SessionLocal
+│   ├── models.py        # Definición de tablas (SQLAlchemy Models)
+│   ├── schemas.py       # Pydantic models (para validación de datos)
+│   ├── repository.py    # Lógica de acceso a datos (Queries)
+│   └── service.py       # Lógica de negocio
+├── .env                 # Variables de entorno (DATABASE_URL)
+└── requirements.txt
