@@ -1,0 +1,265 @@
+<div class="main-panel">
+  <div class="sidebar">
+    <div class="logo">CollabBoard</div>
+    <nav>
+      <a [class.active]="currentView === 'board'" (click)="switchView('board')">Dashboard</a>
+      <a [class.active]="currentView === 'reports'" (click)="switchView('reports')">Reportes</a>
+      
+      <a *ngIf="isAdmin" [class.active]="currentView === 'users'" (click)="switchView('users')" style="color: #ff991f; font-weight: bold; cursor: pointer;">Gestionar Usuarios</a>
+    </nav>
+    <div class="team-section">
+      <h4>TU EQUIPO</h4>
+      <div class="member" *ngFor="let user of users">{{ user.name }} <span class="status green"></span></div>
+    </div>
+    <div class="logout-section">
+      <a (click)="logout()" class="logout-link" style="cursor: pointer;">Cerrar Sesión</a>
+    </div>
+  </div>
+
+  <div class="board-area">
+    <header class="board-header">
+      <input type="search" placeholder="Buscar">
+      <div class="header-actions"><span>Notificaciones</span><span>Perfil</span></div>
+    </header>
+
+    <div class="panel-header" *ngIf="currentView === 'board'">
+      <div class="breadcrumbs">CollabBoard -> Proyectos Globales</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 10px;">
+        <h2 style="margin: 0;">Rediseño Web UX</h2>
+        <div class="filters-container">
+          <span style="font-size: 13px; color: #5e6c84; font-weight: 500;">Filtros:</span>
+          <select [(ngModel)]="filterAssignee" class="filter-input">
+            <option value="">Todos</option>
+            <option *ngFor="let user of users" [value]="user.name">{{ user.name }}</option>
+          </select>
+          <div class="date-filter"><span style="font-size: 12px; color: #5e6c84;">Desde:</span><input type="date" [(ngModel)]="filterStartDate" class="filter-input"></div>
+          <div class="date-filter"><span style="font-size: 12px; color: #5e6c84;">Hasta:</span><input type="date" [(ngModel)]="filterEndDate" class="filter-input"></div>
+          <button *ngIf="filterAssignee || filterStartDate || filterEndDate" (click)="clearFilters()" class="btn-clear-filters">✖ Limpiar</button>
+          <button class="btn-primary" (click)="openNewTaskModal()" style="margin-left: 10px;">+ Nueva Tarea</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="board-container" *ngIf="currentView === 'board'">
+      <div class="kanban-board">
+        
+        <div class="column column-por-hacer">
+          <div class="column-header">POR HACER</div>
+          <div class="task-list">
+            <div class="task-card" *ngFor="let task of getTasksByStatus('pending')">
+              <div class="task-title">{{task.title}}</div>
+              <div class="task-desc">{{task.description}}</div>
+              <div class="task-dates" *ngIf="task.startDate || task.endDate"><i class="calendar-icon">📅</i> <span *ngIf="task.startDate">{{ task.startDate | date:'dd MMM' }}</span> - <span *ngIf="task.endDate">{{ task.endDate | date:'dd MMM' }}</span></div>
+              <div class="card-meta">
+                <div class="assignee"><div class="avatar-circle" *ngIf="task.assignee">{{ task.assignee.charAt(0) }}</div> <span class="assignee-name">{{ task.assignee || 'Sin asignar' }}</span></div>
+                <div class="progress-bar-container"><div class="progress-bar" style="width: 0%;"></div></div>
+              </div>
+              <div class="actions">
+                <button (click)="editTask(task)" class="btn-action">Editar</button> 
+                <button (click)="changeStatus(task, 'in-progress')" class="btn-action border-yellow">Proceso</button>
+                <button (click)="changeStatus(task, 'blocked')" class="btn-action border-red">Bloqueo</button>
+                <button (click)="deleteTask(task.id)" class="btn-action text-danger">Borrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column column-en-proceso">
+          <div class="column-header">EN PROCESO</div>
+          <div class="task-list">
+            <div class="task-card" *ngFor="let task of getTasksByStatus('in-progress')">
+              <div class="task-title">{{task.title}}</div>
+              <div class="task-desc">{{task.description}}</div>
+              <div class="task-dates" *ngIf="task.startDate || task.endDate"><i class="calendar-icon">📅</i> <span *ngIf="task.startDate">{{ task.startDate | date:'dd MMM' }}</span> - <span *ngIf="task.endDate">{{ task.endDate | date:'dd MMM' }}</span></div>
+              <div class="card-meta">
+                <div class="assignee"><div class="avatar-circle" *ngIf="task.assignee">{{ task.assignee.charAt(0) }}</div> <span class="assignee-name">{{ task.assignee || 'Sin asignar' }}</span></div>
+                <div class="progress-bar-container"><div class="progress-bar" style="width: 50%;"></div></div>
+              </div>
+              <div class="actions">
+                <button (click)="editTask(task)" class="btn-action">Editar</button> 
+                <button (click)="changeStatus(task, 'pending')" class="btn-action border-gray">Hacer</button>
+                <button (click)="changeStatus(task, 'on-review')" class="btn-action border-blue">Revisión</button>
+                <button (click)="deleteTask(task.id)" class="btn-action text-danger">Borrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column column-revision">
+          <div class="column-header">EN REVISIÓN</div>
+          <div class="task-list">
+            <div class="task-card" *ngFor="let task of getTasksByStatus('on-review')">
+              <div class="task-title">{{task.title}}</div>
+              <div class="task-desc">{{task.description}}</div>
+              <div class="task-dates" *ngIf="task.startDate || task.endDate"><i class="calendar-icon">📅</i> <span *ngIf="task.startDate">{{ task.startDate | date:'dd MMM' }}</span> - <span *ngIf="task.endDate">{{ task.endDate | date:'dd MMM' }}</span></div>
+              <div class="card-meta">
+                <div class="assignee"><div class="avatar-circle" *ngIf="task.assignee">{{ task.assignee.charAt(0) }}</div> <span class="assignee-name">{{ task.assignee || 'Sin asignar' }}</span></div>
+                <div class="progress-bar-container"><div class="progress-bar" style="width: 90%;"></div></div>
+              </div>
+              <div class="actions">
+                <button (click)="editTask(task)" class="btn-action">Editar</button> 
+                <button (click)="changeStatus(task, 'in-progress')" class="btn-action border-yellow">Proceso</button>
+                <button (click)="changeStatus(task, 'completed')" class="btn-action border-green">Listo</button>
+                <button (click)="deleteTask(task.id)" class="btn-action text-danger">Borrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column column-bloqueado">
+          <div class="column-header">BLOQUEADO</div>
+          <div class="task-list">
+            <div class="task-card" *ngFor="let task of getTasksByStatus('blocked')">
+              <div class="task-title">{{task.title}}</div>
+              <div class="task-desc">{{task.description}}</div>
+              <div class="task-dates" *ngIf="task.startDate || task.endDate"><i class="calendar-icon">📅</i> <span *ngIf="task.startDate">{{ task.startDate | date:'dd MMM' }}</span> - <span *ngIf="task.endDate">{{ task.endDate | date:'dd MMM' }}</span></div>
+              <div class="card-meta">
+                <div class="assignee"><div class="avatar-circle" *ngIf="task.assignee">{{ task.assignee.charAt(0) }}</div> <span class="assignee-name">{{ task.assignee || 'Sin asignar' }}</span></div>
+                <div class="progress-bar-container"><div class="progress-bar" style="width: 10%;"></div></div>
+              </div>
+              <div class="actions">
+                <button (click)="editTask(task)" class="btn-action">Editar</button> 
+                <button (click)="changeStatus(task, 'pending')" class="btn-action border-gray">Hacer</button>
+                <button (click)="changeStatus(task, 'in-progress')" class="btn-action border-yellow">Proceso</button>
+                <button (click)="deleteTask(task.id)" class="btn-action text-danger">Borrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column column-listo">
+          <div class="column-header">LISTO</div>
+          <div class="task-list">
+            <div class="task-card" *ngFor="let task of getTasksByStatus('completed')">
+              <div class="task-title">{{task.title}}</div>
+              <div class="task-desc">{{task.description}}</div>
+              <div class="task-dates" *ngIf="task.startDate || task.endDate"><i class="calendar-icon">📅</i> <span *ngIf="task.startDate">{{ task.startDate | date:'dd MMM' }}</span> - <span *ngIf="task.endDate">{{ task.endDate | date:'dd MMM' }}</span></div>
+              <div class="card-meta">
+                <div class="assignee"><div class="avatar-circle" *ngIf="task.assignee">{{ task.assignee.charAt(0) }}</div> <span class="assignee-name">{{ task.assignee || 'Sin asignar' }}</span></div>
+                <div class="progress-bar-container"><div class="progress-bar" style="width: 100%;"></div></div>
+              </div>
+              <div class="actions">
+                <button (click)="editTask(task)" class="btn-action">Editar</button> 
+                <button (click)="changeStatus(task, 'on-review')" class="btn-action border-blue">Revisión</button>
+                <button (click)="deleteTask(task.id)" class="btn-action text-danger">Borrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="reports-container" *ngIf="currentView === 'reports'">
+      <div class="reports-header">
+        <h2>Rendimiento del Equipo</h2>
+        <p>Progreso de tareas completadas vs asignadas totales por usuario.</p>
+      </div>
+
+      <div class="chart-card">
+        <h3>Productividad (Tareas Completadas)</h3>
+        
+        <div class="chart-wrapper">
+          <div class="bar-row" *ngFor="let stat of userStats">
+            <div class="bar-user"><div class="avatar-circle">{{ stat.name.charAt(0) }}</div><span>{{ stat.name }}</span></div>
+            <div class="bar-track"><div class="bar-fill" [style.width.%]="stat.percentage" [style.background-color]="stat.percentage === 100 ? '#00875a' : '#0052cc'"></div></div>
+            <div class="bar-stats"><strong>{{ stat.completed }} / {{ stat.total }}</strong><small>({{ stat.percentage }}%)</small></div>
+          </div>
+          <div *ngIf="userStats.length === 0" style="text-align: center; color: #5e6c84; padding: 20px;">Aún no hay usuarios ni tareas asignadas.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reports-container" *ngIf="currentView === 'users'">
+      <div class="reports-header" style="display: flex; justify-content: space-between; align-items: center; max-width: 900px;">
+        <div>
+          <h2>Gestión de Usuarios</h2>
+          <p>Administra los miembros de tu equipo y sus permisos de acceso.</p>
+        </div>
+        <button class="btn-primary" (click)="openRegisterModal()">+ Nuevo Usuario</button>
+      </div>
+
+      <div class="chart-card" style="max-width: 900px; padding: 0;">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol del Sistema</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of users">
+              <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="avatar-circle">{{ u.name.charAt(0) }}</div>
+                  <strong style="color: #172b4d;">{{ u.name }}</strong>
+                  <span *ngIf="u.id === currentUserId" style="font-size: 11px; background: #e3fcef; color: #006644; padding: 2px 6px; border-radius: 10px; font-weight: bold;">TÚ</span>
+                </div>
+              </td>
+              <td style="color: #5e6c84;">{{ u.email }}</td>
+              <td>
+                <select [(ngModel)]="u.role" (change)="changeUserRole(u.id, u.role)" class="filter-input" [disabled]="u.id === currentUserId" style="width: 140px;">
+                  <option value="user">👤 Usuario</option>
+                  <option value="admin">👑 Administrador</option>
+                </select>
+              </td>
+              <td>
+                <button (click)="deleteUserAccount(u.id)" [disabled]="u.id === currentUserId" class="btn-action text-danger" style="border: none; background: transparent; cursor: pointer; font-size: 13px;">
+                  🗑️ Eliminar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="isModalOpen" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <app-task-form [taskToEdit]="taskToEdit" (taskAdded)="onTaskAdded($event)" (taskUpdated)="onTaskUpdated($event)" (cancelEdit)="closeModal()"></app-task-form>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="isRegisterModalOpen" (click)="closeRegisterModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()" style="background: #ffffff; border-radius: 8px; box-shadow: 0 8px 24px rgba(9, 30, 66, 0.25); max-width: 400px; width: 90%; padding: 30px; position: relative;">
+    
+    <h3 style="margin-top: 0; color: #172b4d; display: flex; align-items: center; gap: 8px; font-size: 20px;">👑 Dar de alta usuario</h3>
+    <p style="color: #5e6c84; font-size: 14px; margin-bottom: 24px; margin-top: -5px;">Crea un nuevo miembro para el equipo.</p>
+    
+    <div class="form-group" style="margin-bottom: 16px;">
+      <label style="font-weight: 600; font-size: 12px; color: #5e6c84; text-transform: uppercase; display: block; margin-bottom: 6px;">Nombre completo</label>
+      <input type="text" [(ngModel)]="regName" placeholder="Ej: Roberto M." style="width: 100%; padding: 10px; border-radius: 4px; border: 2px solid #dfe1e6; box-sizing: border-box; outline: none; font-family: inherit; background: #fafbfc; color: #172b4d;">
+    </div>
+    
+    <div class="form-group" style="margin-bottom: 16px;">
+      <label style="font-weight: 600; font-size: 12px; color: #5e6c84; text-transform: uppercase; display: block; margin-bottom: 6px;">Correo electrónico</label>
+      <input type="email" [(ngModel)]="regEmail" placeholder="roberto@empresa.com" style="width: 100%; padding: 10px; border-radius: 4px; border: 2px solid #dfe1e6; box-sizing: border-box; outline: none; font-family: inherit; background: #fafbfc; color: #172b4d;">
+    </div>
+
+    <div class="form-group" style="margin-bottom: 16px;">
+      <label style="font-weight: 600; font-size: 12px; color: #5e6c84; text-transform: uppercase; display: block; margin-bottom: 6px;">Rol de Sistema</label>
+      <select [(ngModel)]="regRole" style="width: 100%; padding: 10px; border-radius: 4px; border: 2px solid #dfe1e6; box-sizing: border-box; outline: none; font-family: inherit; background: #fafbfc; color: #172b4d;">
+        <option value="user">👤 Usuario Estándar</option>
+        <option value="admin">👑 Administrador</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="margin-bottom: 24px;">
+      <label style="font-weight: 600; font-size: 12px; color: #5e6c84; text-transform: uppercase; display: block; margin-bottom: 6px;">Contraseña temporal</label>
+      <input type="password" [(ngModel)]="regPassword" style="width: 100%; padding: 10px; border-radius: 4px; border: 2px solid #dfe1e6; box-sizing: border-box; outline: none; font-family: inherit; background: #fafbfc; color: #172b4d;">
+    </div>
+
+    <div *ngIf="regError" style="background: #ffebe6; color: #de350b; font-size: 13px; padding: 12px; border-radius: 4px; margin-bottom: 20px; font-weight: 500;">❌ {{ regError }}</div>
+    <div *ngIf="regMessage" style="background: #e3fcef; color: #006644; font-size: 13px; padding: 12px; border-radius: 4px; margin-bottom: 20px; font-weight: bold;">✅ {{ regMessage }}</div>
+
+    <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #dfe1e6; padding-top: 20px; margin-top: 10px;">
+      <button type="button" (click)="closeRegisterModal()" style="background: transparent; color: #5e6c84; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">Cancelar</button>
+      <button type="button" (click)="registerUser()" [disabled]="!regName || !regEmail || !regPassword" style="background: #0052cc; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600;">Guardar Usuario</button>
+    </div>
+  </div>
+</div>
